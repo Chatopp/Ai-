@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>酶活性探究实验平台</title>
+    <style>
+        /* --- General Styles --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; min-height: 100vh; overflow: hidden; }
+        .hidden { display: none !important; }
+
+        /* --- Selection Screen --- */
+        #selection-screen { width: 100%; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; transition: opacity 0.5s ease; }
+        .selection-title { font-size: 48px; font-weight: bold; margin-bottom: 60px; text-shadow: 3px 3px 6px rgba(0,0,0,0.4); }
+        .selection-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; max-width: 1200px; width: 100%; }
+        .selection-card { background: rgba(255,255,255,0.1); border-radius: 20px; padding: 40px; text-align: center; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.3s ease; }
+        .selection-card:hover { transform: translateY(-10px); box-shadow: 0 10px 20px rgba(0,0,0,0.3); background: rgba(255,255,255,0.2); }
+        .selection-card h2 { font-size: 28px; color: #4ECDC4; margin-bottom: 15px; }
+        .selection-card p { font-size: 16px; opacity: 0.8; line-height: 1.5; }
+
+        /* --- Experiment Container --- */
+        .experiment-container { padding: 20px; max-width: 1500px; margin: 0 auto; }
+        .header { position: relative; text-align: center; font-size: 28px; font-weight: bold; margin-bottom: 30px; padding: 0 100px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .back-button { position: absolute; left: 0; top: 50%; transform: translateY(-50%); padding: 10px 18px; font-size: 14px; font-weight: bold; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; }
+        .back-button:hover { background: #4ECDC4; border-color: #4ECDC4; transform: translateY(-50%) scale(1.05); }
+        .main-content { display: grid; grid-template-columns: 350px 1fr 300px; gap: 20px; height: calc(100vh - 120px); }
+        .panel { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); overflow-y: auto; }
+
+        /* --- Control Panel --- */
+        .control-panel h3 { color: #4ECDC4; margin-bottom: 15px; font-size: 18px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; }
+        .control-group { margin-bottom: 15px; }
+        .control-group label { display: block; margin-bottom: 8px; font-size: 14px; }
+        .control-group .value-span { float: right; font-weight: bold; color: #FFD700; }
+        .slider { width: 100%; height: 8px; border-radius: 4px; outline: none; margin: 10px 0; }
+        .slider-ph { background: linear-gradient(to right, red, orange, yellow, green, cyan, blue, purple); }
+        .slider-temp { background: linear-gradient(to right, #00BFFF, #ADFF2F, #FFD700, #FF4500, #B22222); }
+        .slider-substrate { background: linear-gradient(to right, #9E9E9E, #673AB7); }
+        .value-display { background: rgba(0,0,0,0.3); padding: 15px; text-align: center; font-size: 24px; font-weight: bold; border-radius: 8px; margin-top: 10px; }
+        .parallel-count-input { width: 100%; padding: 8px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 5px; color: white; font-size: 14px; text-align: center; }
+        .control-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        .btn { padding: 12px 20px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; transition: all 0.3s ease; font-weight: bold; }
+        .btn-start { background: #4CAF50; color: white; }
+        .btn-reset { background: #f44336; color: white; }
+        .btn-add { background: #2196F3; color: white; }
+        .btn-custom { background: #FF9800; color: white; }
+        .btn-add-standard { background: #9C27B0; color: white; }
+        .btn-model-reset { background: #607D8B; color: white; font-size: 14px; padding: 8px 15px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .experimental-groups h4 { margin-top: 20px; }
+        .groups-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; margin-top: 10px; }
+        .group-btn { padding: 8px 12px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; color: white; font-size: 12px; cursor: pointer; transition: all 0.3s ease; text-align: center; }
+        .group-btn:hover, .group-btn.active { background: #4ECDC4; }
+        .model-controls { margin-top: 25px; border-top: 2px solid rgba(78, 205, 196, 0.5); padding-top: 15px; }
+        .model-controls h3 { font-size: 16px; color: #FFD700; border: none; }
+
+        /* --- Experiment Area & Sensor Panel (no changes) --- */
+        .experiment-area { display: flex; flex-direction: column; }
+        .reaction-chamber { flex: 1; background: rgba(0,0,0,0.2); border-radius: 10px; margin-bottom: 20px; display: flex; align-items: flex-end; justify-content: flex-start; position: relative; overflow-x: auto; padding: 20px; gap: 15px;}
+        .tube-group-container { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; padding: 25px 10px 0; border-radius: 10px; transition: background-color 0.3s; }
+        .tube-group-container.active { background-color: rgba(78, 205, 196, 0.2); }
+        .group-main-label { position: relative; top: -15px; font-size: 14px; font-weight: bold; background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 5px; }
+        .tubes-wrapper { display: flex; gap: 5px; align-items: flex-end; }
+        .test-tube { width: 35px; height: 150px; background: linear-gradient(to bottom, transparent 20%, #ff6b6b 100%); border: 2px solid #333; border-radius: 0 0 15px 15px; position: relative; display: flex; flex-direction: column; align-items: center; transition: background 0.3s ease; }
+        .tube-label { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #ddd; }
+        .bubble { position: absolute; background: rgba(255,255,255,0.7); border-radius: 50%; animation: bubble-rise 2s infinite linear; }
+        @keyframes bubble-rise { 0% { bottom: 0; opacity: 1; } 100% { bottom: 100%; opacity: 0; } }
+        .chart-container { height: 250px; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 15px; position: relative; }
+        .chart-title { text-align: center; margin-bottom: 10px; font-size: 14px; }
+        .chart { position: relative; width: 100%; height: calc(100% - 30px); }
+        .chart-line { stroke: #4ECDC4; stroke-width: 3; fill: none; transition: d 0.3s ease; }
+        .chart-point { fill: #4ECDC4; r: 4; transition: cy 0.3s ease, cx 0.3s ease; }
+        .sensor-panel h3 { color: #FFD700; margin-bottom: 15px; }
+        .progress-bars { margin-bottom: 20px; }
+        .progress-item { margin-bottom: 15px; }
+        .progress-label { font-size: 12px; margin-bottom: 5px; }
+        .progress-bar { width: 100%; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #4ECDC4, #44A08D); width: 0%; transition: width 0.3s ease; }
+        .readings { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: center; }
+        .reading { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; }
+        .reading-label { font-size: 12px; opacity: 0.8; }
+        .reading-value { font-size: 20px; font-weight: bold; margin-top: 5px; }
+        
+        /* --- Dialog Styles (no changes) --- */
+        .custom-dialog { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .dialog-content { background: linear-gradient(135deg, #6a7ee9 0%, #734aa1 100%); padding: 30px; border-radius: 15px; max-width: 500px; width: 90%; color: white; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); }
+        .dialog-title { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #4ECDC4; }
+        .dialog-input-group { margin: 15px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .dialog-input { padding: 10px 15px; font-size: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; background: rgba(255,255,255,0.1); color: white; width: 120px; text-align: center; }
+        .dialog-input:focus { outline: none; border-color: #4ECDC4; background: rgba(255,255,255,0.2); }
+        .dialog-add-btn { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s ease; }
+        .pending-groups-preview { display: flex; justify-content: center; gap: 10px; margin: 25px 0; flex-wrap: wrap; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; min-height: 50px; }
+        .pending-group-pill { background: #4ECDC4; color: black; padding: 5px 10px; border-radius: 15px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+        .remove-pill-btn { width: 18px; height: 18px; border: none; background: #c23b22; color: white; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; line-height: 1; }
+        .dialog-buttons { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
+        .dialog-btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; transition: all 0.3s ease; font-weight: bold; }
+        .dialog-btn-confirm { background: #4CAF50; }
+        .dialog-btn-cancel { background: #f44336; }
+    </style>
+</head>
+<body>
+    <!-- Selection Screen -->
+    <div id="selection-screen">
+        <h1 class="selection-title">选择探究的影响因素</h1>
+        <div class="selection-grid">
+            <div class="selection-card" onclick="showExperiment('ph')"><h2>pH值</h2><p>探究酸碱度对过氧化氢酶活性的影响</p></div>
+            <div class="selection-card" onclick="showExperiment('temp')"><h2>温度</h2><p>探究温度高低对过氧化氢酶活性的影响</p></div>
+            <div class="selection-card" onclick="showExperiment('substrate')"><h2>底物浓度</h2><p>探究反应物浓度对酶促反应速率的影响</p></div>
+        </div>
+    </div>
+
+    <!-- Reusable Experiment Structure Template -->
+    <template id="experiment-template">
+        <div class="experiment-container hidden">
+            <div class="header">
+                <button class="back-button" onclick="showSelectionScreen()">← 返回选择</button>
+                <span class="header-title"></span>
+            </div>
+            <div class="main-content">
+                <div class="panel control-panel">
+                    <h3>🧪 实验条件控制</h3>
+                    <div class="control-group">
+                        <label class="slider-label"></label>
+                        <input type="range" class="slider">
+                        <div class="value-display"></div>
+                    </div>
+                    <div class="control-group">
+                        <label>平行实验数 (1-5)</label>
+                        <input type="number" class="parallel-count-input" min="1" max="5" value="3">
+                    </div>
+                    <div class="control-buttons">
+                        <button class="btn btn-start">▶ 开始实验</button>
+                        <button class="btn btn-reset">⟲ 重置</button>
+                        <button class="btn btn-add">+ 添加当前实验组</button>
+                        <button class="btn btn-custom">📝 自定义实验组</button>
+                        <button class="btn btn-add-standard">🧪 添加标准组</button>
+                    </div>
+
+                    <!-- REAL-TIME MODEL CONTROLS -->
+                    <div class="model-controls">
+                        <h3>⚙️ 实时模型参数</h3>
+                        <!-- pH Controls -->
+                        <div class="model-ph-controls hidden">
+                            <div class="control-group"><label>最适 pH (μ) <span class="value-span ph-mu-val"></span></label><input type="range" class="slider model-slider-ph-mu" min="4" max="10" step="0.1"></div>
+                            <div class="control-group"><label>敏感度 (σ) <span class="value-span ph-sigma-val"></span></label><input type="range" class="slider model-slider-ph-sigma" min="0.5" max="5" step="0.1"></div>
+                        </div>
+                        <!-- Temperature Controls -->
+                        <div class="model-temp-controls hidden">
+                            <div class="control-group"><label>最适温度 (°C) <span class="value-span temp-opt-val"></span></label><input type="range" class="slider model-slider-temp-opt" min="15" max="55" step="1"></div>
+                            <div class="control-group"><label>敏感度 (σ) <span class="value-span temp-sigma-val"></span></label><input type="range" class="slider model-slider-temp-sigma" min="5" max="25" step="1"></div>
+                        </div>
+                        <!-- Substrate Controls -->
+                        <div class="model-substrate-controls hidden">
+                           <div class="control-group"><label>米氏常数 Km (%) <span class="value-span substrate-km-val"></span></label><input type="range" class="slider model-slider-substrate-km" min="5" max="50" step="1"></div>
+                        </div>
+                        <button class="btn btn-model-reset">⟲ 恢复默认模型</button>
+                    </div>
+
+                    <div class="experimental-groups"><h4>已添加实验组</h4><div class="groups-grid"></div></div>
+                </div>
+                <div class="panel experiment-area">
+                    <h3 class="area-title"></h3><div class="reaction-chamber"></div>
+                    <div class="chart-container"><div class="chart-title"></div><svg class="chart" viewBox="0 0 500 150" preserveAspectRatio="none"><polyline class="chart-line" points="" /><g class="chart-points"></g></svg></div>
+                </div>
+                <div class="panel sensor-panel">
+                    <h3>📊 活性传感器</h3>
+                    <div class="progress-bars"><div class="progress-item"><div class="progress-label">当前酶活性</div><div class="progress-bar"><div class="progress-fill"></div></div></div></div>
+                    <div class="readings">
+                        <div class="reading"><div class="reading-label current-value-label"></div><div class="reading-value current-value"></div></div>
+                        <div class="reading"><div class="reading-label">反应时间</div><div class="reading-value reaction-time">0:00</div></div>
+                        <div class="reading"><div class="reading-label">当前活性(理论)</div><div class="reading-value current-activity"></div></div>
+                        <div class="reading"><div class="reading-label">平均活性(模拟)</div><div class="reading-value average-activity"></div></div>
+                        <div class="reading"><div class="reading-label">实验组数</div><div class="reading-value group-count">0</div></div>
+                        <div class="reading"><div class="reading-label">总试管数</div><div class="reading-value tube-count">0</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+    
+    <!-- Custom Groups Dialog Template -->
+    <template id="custom-dialog-template">
+        <div class="custom-dialog">
+            <div class="dialog-content">
+                <div class="dialog-title">自定义实验组</div>
+                <p class="dialog-description">输入实验条件值并添加至列表</p>
+                <div class="dialog-input-group">
+                    <input type="number" class="dialog-input" placeholder="输入值">
+                    <button class="dialog-add-btn">＋ 添加</button>
+                </div>
+                <div class="pending-groups-preview"></div>
+                <div class="dialog-buttons">
+                    <button class="dialog-btn dialog-btn-confirm">✅ 确认添加</button>
+                    <button class="dialog-btn dialog-btn-cancel">❌ 取消</button>
+                </div>
+            </div>
+        </div>
+    </template>
+    
+    <script>
+    // ===================================================================
+    // GLOBAL STATE AND CONFIG
+    // ===================================================================
+    let activeExperiment = null;
+
+    const experimentConfig = {
+        ph: { title: 'pH对酶活性的影响', controlTitle: '🧪 实验控制', areaTitle: '🧪 实验区', label: 'pH', unit: '', min: 1, max: 14, default: 7.0, step: 0.1, standardValues: [1, 3, 5, 6, 7, 8, 9, 11, 13], modelParams: { mu: 7.0, sigma: 2.0 } },
+        temp: { title: '温度对酶活性的影响', controlTitle: '🌡️ 实验控制', areaTitle: '🌡️ 实验区', label: '温度', unit: '°C', min: 0, max: 80, default: 37, step: 1, standardValues: [0, 10, 20, 30, 37, 45, 55, 65, 75], modelParams: { optTemp: 37.0, tempSigma: 12.0 } },
+        substrate: { title: '底物浓度对酶活性的影响', controlTitle: '⚗️ 实验控制', areaTitle: '⚗️ 实验区', label: '浓度', unit: '%', min: 0, max: 100, default: 50, step: 1, standardValues: [1, 5, 10, 20, 40, 60, 80, 95, 100], modelParams: { Vmax: 100, Km: 20 } }
+    };
+    // Store initial defaults separately for resetting
+    const initialModelParams = JSON.parse(JSON.stringify(experimentConfig));
+
+    const experimentStates = {};
+
+    function createInitialState(type) {
+        return {
+            currentValue: experimentConfig[type].default,
+            parallelCount: 3,
+            isRunning: false,
+            time: 0,
+            timer: null,
+            groups: [],
+            groupCounter: 0,
+            customGroupsPending: [],
+        };
+    }
+
+    // ===================================================================
+    // SCIENTIFIC MODELS
+    // ===================================================================
+    function calculateActivity(type, value) {
+        let baseActivity;
+        const params = experimentConfig[type].modelParams;
+        switch (type) {
+            case 'ph':
+                const { mu, sigma } = params;
+                if (sigma <= 0) return 0;
+                baseActivity = Math.exp(-Math.pow(value - mu, 2) / (2 * Math.pow(sigma, 2))) * 100;
+                break;
+            case 'temp':
+                const { optTemp, tempSigma } = params;
+                if (tempSigma <= 0) return 0;
+                if (value < 0) baseActivity = 0; // Temp doesn't rise again after denaturation
+                else baseActivity = Math.exp(-Math.pow(value - optTemp, 2) / (2 * Math.pow(tempSigma, 2))) * 100;
+                break;
+            case 'substrate':
+                const { Vmax, Km } = params;
+                if (Km <= 0) return 0; // Km must be positive
+                baseActivity = (Vmax * value) / (Km + value);
+                break;
+            default: baseActivity = 0;
+        }
+        return Math.max(0, Math.min(100, Math.round(baseActivity)));
+    }
+
+    function calculateReplicateActivity(baseActivity) {
+        if (baseActivity <= 0) return 0;
+        const errorMargin = 0.05; // 5% random error
+        const randomFactor = 1 + (Math.random() - 0.5) * 2 * errorMargin;
+        return Math.max(0, Math.min(100, Math.round(baseActivity * randomFactor)));
+    }
+
+
+    // ===================================================================
+    // UI NAVIGATION & INITIALIZATION
+    // ===================================================================
+    document.addEventListener('DOMContentLoaded', () => {
+        const experimentTemplate = document.getElementById('experiment-template');
+        const dialogTemplate = document.getElementById('custom-dialog-template');
+        for (const type in experimentConfig) {
+            const expClone = document.importNode(experimentTemplate.content, true);
+            const expContainer = expClone.querySelector('.experiment-container');
+            expContainer.id = `${type}-experiment`;
+            document.body.appendChild(expClone);
+            
+            const dialogClone = document.importNode(dialogTemplate.content, true);
+            const dialogContainer = dialogClone.querySelector('.custom-dialog');
+            dialogContainer.id = `custom-dialog-${type}`;
+            document.body.appendChild(dialogClone);
+
+            initializeExperiment(type);
+        }
+    });
+
+    function initializeExperiment(type) {
+        experimentStates[type] = createInitialState(type);
+        const config = experimentConfig[type];
+        const elements = getExperimentElements(type);
+
+        // Setup main UI text and slider
+        elements.headerTitle.textContent = `定量实验——探究${config.title}`;
+        elements.areaTitle.textContent = config.areaTitle;
+        elements.sliderLabel.textContent = `调节${config.label} (${config.min}${config.unit} - ${config.max}${config.unit})`;
+        elements.currentValueLabel.textContent = `当前${config.label}`;
+        elements.slider.min = config.min;
+        elements.slider.max = config.max;
+        elements.slider.step = config.step;
+        elements.slider.value = config.default;
+        elements.slider.className = `slider slider-${type}`;
+
+        // Add event listeners for main controls
+        elements.slider.addEventListener('input', (e) => handleSliderInput(type, e.target.value));
+        elements.parallelCountInput.addEventListener('change', (e) => handleParallelCountChange(type, e.target.value));
+        elements.startButton.addEventListener('click', () => startExperiment(type));
+        elements.resetButton.addEventListener('click', () => resetExperiment(type));
+        elements.addButton.addEventListener('click', () => addCurrentGroup(type));
+        elements.customButton.addEventListener('click', () => showCustomDialog(type));
+        elements.addStandardButton.addEventListener('click', () => addStandardGroups(type));
+
+        // Setup real-time model controls
+        initializeModelControls(type);
+
+        // Add event listeners for custom group dialog
+        const dialogElements = getDialogElements(type);
+        dialogElements.addButton.addEventListener('click', () => addPendingGroup(type));
+        dialogElements.confirmButton.addEventListener('click', () => confirmCustomGroups(type));
+        dialogElements.cancelButton.addEventListener('click', () => closeCustomDialog(type));
+
+        updateUI(type);
+    }
+    
+    function initializeModelControls(type) {
+        const elements = getExperimentElements(type);
+        const params = experimentConfig[type].modelParams;
+
+        // Show relevant controls, hide others
+        elements.modelPhControls.classList.toggle('hidden', type !== 'ph');
+        elements.modelTempControls.classList.toggle('hidden', type !== 'temp');
+        elements.modelSubstrateControls.classList.toggle('hidden', type !== 'substrate');
+
+        switch(type) {
+            case 'ph':
+                elements.modelSliderPhMu.value = params.mu;
+                elements.modelSliderPhSigma.value = params.sigma;
+                elements.modelSliderPhMu.addEventListener('input', (e) => handleModelParamChange(type, 'mu', e.target.value));
+                elements.modelSliderPhSigma.addEventListener('input', (e) => handleModelParamChange(type, 'sigma', e.target.value));
+                break;
+            case 'temp':
+                elements.modelSliderTempOpt.value = params.optTemp;
+                elements.modelSliderTempSigma.value = params.tempSigma;
+                elements.modelSliderTempOpt.addEventListener('input', (e) => handleModelParamChange(type, 'optTemp', e.target.value));
+                elements.modelSliderTempSigma.addEventListener('input', (e) => handleModelParamChange(type, 'tempSigma', e.target.value));
+                break;
+            case 'substrate':
+                elements.modelSliderSubstrateKm.value = params.Km;
+                elements.modelSliderSubstrateKm.addEventListener('input', (e) => handleModelParamChange(type, 'Km', e.target.value));
+                break;
+        }
+
+        elements.modelResetButton.addEventListener('click', () => resetModel(type));
+        updateModelValueDisplays(type);
+    }
+    
+    function showExperiment(type) { /* ... same as before, no changes needed ... */
+        activeExperiment = type;
+        document.getElementById('selection-screen').classList.add('hidden');
+        document.querySelectorAll('.experiment-container').forEach(el => el.classList.add('hidden'));
+        document.getElementById(`${type}-experiment`).classList.remove('hidden');
+    }
+    function showSelectionScreen() { /* ... same as before, no changes needed ... */
+        if (activeExperiment) {
+            document.getElementById(`${activeExperiment}-experiment`).classList.add('hidden');
+        }
+        activeExperiment = null;
+        document.getElementById('selection-screen').classList.remove('hidden');
+    }
+
+    // ===================================================================
+    // REAL-TIME MODEL HANDLING
+    // ===================================================================
+    function handleModelParamChange(type, paramName, value) {
+        experimentConfig[type].modelParams[paramName] = parseFloat(value);
+        recalculateAllGroups(type);
+        updateUI(type);
+    }
+    
+    function recalculateAllGroups(type) {
+        const state = experimentStates[type];
+        state.groups.forEach(group => {
+            const baseActivity = calculateActivity(type, group.value);
+            let totalActivity = 0;
+            // To maintain consistency, we re-calculate replicates based on the new base activity
+            group.replicates = []; 
+            for (let i = 0; i < state.parallelCount; i++) {
+                const activity = calculateReplicateActivity(baseActivity);
+                group.replicates.push({ activity });
+                totalActivity += activity;
+            }
+            group.averageActivity = (state.parallelCount > 0) ? Math.round(totalActivity / state.parallelCount) : 0;
+        });
+    }
+
+    function resetModel(type) {
+        experimentConfig[type].modelParams = JSON.parse(JSON.stringify(initialModelParams[type].modelParams));
+        initializeModelControls(type); // Re-init to set slider values
+        recalculateAllGroups(type);
+        updateUI(type);
+    }
+    
+    function updateModelValueDisplays(type) {
+        const elements = getExperimentElements(type);
+        const params = experimentConfig[type].modelParams;
+        switch(type) {
+            case 'ph':
+                elements.phMuVal.textContent = parseFloat(params.mu).toFixed(1);
+                elements.phSigmaVal.textContent = parseFloat(params.sigma).toFixed(1);
+                break;
+            case 'temp':
+                elements.tempOptVal.textContent = params.optTemp;
+                elements.tempSigmaVal.textContent = params.tempSigma;
+                break;
+            case 'substrate':
+                elements.substrateKmVal.textContent = params.Km;
+                break;
+        }
+    }
+
+    // ===================================================================
+    // CUSTOM DIALOG LOGIC (no changes needed)
+    // ===================================================================
+    function showCustomDialog(type) { activeExperiment = type; const config = experimentConfig[type]; const dialogElements = getDialogElements(type); experimentStates[type].customGroupsPending = []; dialogElements.input.value = ''; dialogElements.title.textContent = `自定义 ${config.label} 实验组`; dialogElements.description.textContent = `输入范围 (${config.min} - ${config.max}) 的值`; dialogElements.input.placeholder = `输入${config.label}值`; dialogElements.input.min = config.min; dialogElements.input.max = config.max; dialogElements.input.step = config.step; renderPendingGroups(type); dialogElements.dialog.style.display = 'flex'; }
+    function closeCustomDialog(type) { const dialogId = type || activeExperiment; if(dialogId) { getDialogElements(dialogId).dialog.style.display = 'none'; } }
+    function addPendingGroup(type) { const state = experimentStates[type]; const config = experimentConfig[type]; const dialogElements = getDialogElements(type); const value = parseFloat(dialogElements.input.value); if (isNaN(value)) { alert('请输入一个有效的数字。'); return; } if (value < config.min || value > config.max) { alert(`值必须在 ${config.min} 和 ${config.max} 之间。`); return; } if (state.customGroupsPending.includes(value)) { alert('该值已在待添加列表中。'); return; } if (state.groups.some(g => g.value === value)) { alert('该实验组已存在于实验区。'); return; } state.customGroupsPending.push(value); renderPendingGroups(type); dialogElements.input.value = ''; dialogElements.input.focus(); }
+    function removePendingGroup(type, index) { experimentStates[type].customGroupsPending.splice(index, 1); renderPendingGroups(type); }
+    function renderPendingGroups(type) { const state = experimentStates[type]; const config = experimentConfig[type]; const dialogElements = getDialogElements(type); dialogElements.previewArea.innerHTML = ''; state.customGroupsPending.forEach((value, index) => { const pill = document.createElement('div'); pill.className = 'pending-group-pill'; pill.textContent = `${value.toFixed(config.step === 0.1 ? 1 : 0)} ${config.unit}`; const removeBtn = document.createElement('button'); removeBtn.className = 'remove-pill-btn'; removeBtn.textContent = '×'; removeBtn.onclick = () => removePendingGroup(type, index); pill.appendChild(removeBtn); dialogElements.previewArea.appendChild(pill); }); }
+    function confirmCustomGroups(type) { const state = experimentStates[type]; if (state.customGroupsPending.length === 0) { alert('请至少添加一个实验组。'); return; } state.customGroupsPending.forEach(value => { addGroup(type, value); }); updateUI(type); closeCustomDialog(type); }
+
+    // ===================================================================
+    // CORE EXPERIMENT LOGIC
+    // ===================================================================
+    function addGroup(type, value) {
+        const state = experimentStates[type];
+        if (state.groups.some(g => g.value === value)) { return false; } 
+        const baseActivity = calculateActivity(type, value);
+        const replicates = [];
+        let totalActivity = 0;
+        for (let i = 0; i < state.parallelCount; i++) {
+            const activity = calculateReplicateActivity(baseActivity);
+            replicates.push({ activity });
+            totalActivity += activity;
+        }
+        const averageActivity = (state.parallelCount > 0) ? Math.round(totalActivity / state.parallelCount) : 0;
+        state.groupCounter++;
+        state.groups.push({ value, id: state.groupCounter, replicates, averageActivity });
+        return true;
+    }
+    function addCurrentGroup(type) { const value = experimentStates[type].currentValue; if (!addGroup(type, value)) { alert('该值的实验组已存在！'); } else { updateUI(type); } }
+    function addStandardGroups(type) { resetExperiment(type); const config = experimentConfig[type]; config.standardValues.forEach(value => { addGroup(type, value); }); updateUI(type); }
+    function startExperiment(type) { const state = experimentStates[type]; const elements = getExperimentElements(type); if (state.isRunning) { state.isRunning = false; clearInterval(state.timer); elements.startButton.textContent = '▶ 继续实验'; elements.startButton.style.background = '#4CAF50'; } else { if (state.groups.length === 0) { alert('请先添加至少一个实验组！'); return; } state.isRunning = true; state.timer = setInterval(() => { state.time++; const minutes = Math.floor(state.time / 60); const seconds = state.time % 60; elements.reactionTime.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`; }, 1000); elements.startButton.textContent = '⏸ 暂停实验'; elements.startButton.style.background = '#FF9800'; } }
+    function resetExperiment(type) { const state = experimentStates[type]; if (state.isRunning) { clearInterval(state.timer); } experimentStates[type] = createInitialState(type); updateUI(type); }
+    function handleSliderInput(type, value) { experimentStates[type].currentValue = parseFloat(value); updateSensorDisplays(type); }
+    function handleParallelCountChange(type, value) { const count = parseInt(value); if(isNaN(count)) return; const newCount = Math.max(1, Math.min(5, count)); experimentStates[type].parallelCount = newCount; getExperimentElements(type).parallelCountInput.value = newCount; recalculateAllGroups(type); updateUI(type); }
+
+    // ===================================================================
+    // UI UPDATE & RENDERING
+    // ===================================================================
+    function updateUI(type) {
+        const state = experimentStates[type];
+        const elements = getExperimentElements(type);
+        elements.reactionTime.textContent = '0:00';
+        elements.startButton.textContent = state.isRunning ? '⏸ 暂停实验' : (state.time > 0 ? '▶ 继续实验' : '▶ 开始实验');
+        elements.startButton.style.background = state.isRunning ? '#FF9800' : '#4CAF50';
+        elements.slider.value = state.currentValue;
+        elements.parallelCountInput.value = state.parallelCount;
+        updateSensorDisplays(type);
+        renderTestTubes(type);
+        renderGroupButtons(type);
+        updateChart(type);
+        updateModelValueDisplays(type);
+    }
+    function updateSensorDisplays(type) { const state = experimentStates[type]; const config = experimentConfig[type]; const elements = getExperimentElements(type); const value = state.currentValue; const formattedValue = parseFloat(value).toFixed(config.step === 0.1 ? 1 : 0); const activity = calculateActivity(type, value); elements.valueDisplay.innerHTML = `${config.label} = <span>${formattedValue}</span> ${config.unit}`; elements.currentValue.textContent = `${formattedValue} ${config.unit}`; elements.currentActivity.textContent = `${activity}%`; elements.progressFill.style.width = `${activity}%`; let totalTheoreticalActivity = 0; for (let i = 0; i < state.parallelCount; i++) { totalTheoreticalActivity += calculateReplicateActivity(activity); } const avgActivity = (state.parallelCount > 0) ? Math.round(totalTheoreticalActivity / state.parallelCount) : 0; elements.averageActivity.textContent = `${avgActivity}%`; const totalTubes = state.groups.reduce((acc, group) => acc + group.replicates.length, 0); elements.groupCount.textContent = state.groups.length; elements.tubeCount.textContent = totalTubes; }
+    function renderTestTubes(type) { const state = experimentStates[type]; const elements = getExperimentElements(type); elements.reactionChamber.innerHTML = ''; state.groups.forEach(group => { elements.reactionChamber.appendChild(createTestTubeGroup(type, group)); }); }
+    function renderGroupButtons(type) { const state = experimentStates[type]; const config = experimentConfig[type]; const elements = getExperimentElements(type); elements.groupsGrid.innerHTML = ''; state.groups.forEach(group => { const btn = document.createElement('div'); btn.className = 'group-btn'; btn.textContent = `${parseFloat(group.value).toFixed(config.step === 0.1 ? 1 : 0)}${config.unit}`; btn.dataset.value = group.value; btn.dataset.id = group.id; btn.addEventListener('click', function() { const clickedValue = parseFloat(this.dataset.value); state.currentValue = clickedValue; updateSensorDisplays(type); elements.slider.value = clickedValue; document.querySelectorAll(`#${type}-experiment .tube-group-container`).forEach(c => c.classList.remove('active')); document.querySelector(`#group-container-${type}-${this.dataset.id}`).classList.add('active'); elements.groupsGrid.querySelectorAll('.group-btn').forEach(b => b.classList.remove('active')); this.classList.add('active'); }); elements.groupsGrid.appendChild(btn); }); }
+    function updateChart(type) { const state = experimentStates[type]; const config = experimentConfig[type]; const elements = getExperimentElements(type); elements.chartTitle.textContent = `${config.label}与酶活性关系曲线 (已添加 ${state.groups.length} 组)`; const { chartLine, chartPoints } = elements; if (state.groups.length === 0) { chartLine.setAttribute('points', ''); chartPoints.innerHTML = ''; return; } const sortedGroups = [...state.groups].sort((a, b) => a.value - b.value); const points = sortedGroups.map(group => { const x = ((group.value - config.min) / (config.max - config.min)) * 500; const y = 145 - (group.averageActivity / 100) * 140; return `${x},${y}`; }).join(' '); chartLine.setAttribute('points', points); chartPoints.innerHTML = ''; sortedGroups.forEach(group => { const x = ((group.value - config.min) / (config.max - config.min)) * 500; const y = 145 - (group.averageActivity / 100) * 140; const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle"); circle.setAttribute('class', 'chart-point'); circle.setAttribute('cx', x); circle.setAttribute('cy', y); chartPoints.appendChild(circle); }); }
+    function createTestTubeGroup(type, group) { const config = experimentConfig[type]; const container = document.createElement('div'); container.className = 'tube-group-container'; container.id = `group-container-${type}-${group.id}`; const mainLabel = document.createElement('div'); mainLabel.className = 'group-main-label'; mainLabel.textContent = `${config.label} ${parseFloat(group.value).toFixed(config.step === 0.1 ? 1 : 0)}${config.unit}`; const tubesWrapper = document.createElement('div'); tubesWrapper.className = 'tubes-wrapper'; group.replicates.forEach((replicate, index) => { tubesWrapper.appendChild(createSingleTestTube(replicate.activity, index + 1)); }); container.appendChild(mainLabel); container.appendChild(tubesWrapper); return container; }
+    function createSingleTestTube(activity, labelNum) { const liquidHeight = 15 + (activity / 100) * 70; const color = activity > 80 ? '#4CAF50' : activity > 60 ? '#8BC34A' : activity > 40 ? '#FFC107' : activity > 20 ? '#FF9800' : activity > 0 ? '#F44336' : '#9E9E9E'; const testTube = document.createElement('div'); testTube.className = 'test-tube'; testTube.style.background = `linear-gradient(to bottom, transparent ${100 - liquidHeight}%, ${color} 100%)`; const label = document.createElement('div'); label.className = 'tube-label'; label.textContent = `#${labelNum}`; testTube.appendChild(label); if (activity > 5) { const bubbleCount = Math.floor(activity / 15); for (let i = 0; i < bubbleCount; i++) { const bubble = document.createElement('div'); bubble.className = 'bubble'; bubble.style.left = `${15 + Math.random() * 70}%`; const size = 2 + Math.random() * 4; bubble.style.width = `${size}px`; bubble.style.height = `${size}px`; const duration = 4 - (activity / 100) * 3.5; bubble.style.animationDuration = `${Math.max(0.5, duration)}s`; bubble.style.animationDelay = `${Math.random() * duration}s`; testTube.appendChild(bubble); } } return testTube; }
+
+    // ===================================================================
+    // HELPER FUNCTIONS
+    // ===================================================================
+    function getExperimentElements(type) {
+        const container = document.getElementById(`${type}-experiment`);
+        return {
+            container, headerTitle: container.querySelector('.header-title'), areaTitle: container.querySelector('.area-title'),
+            slider: container.querySelector('.slider'), sliderLabel: container.querySelector('.slider-label'), valueDisplay: container.querySelector('.value-display'),
+            parallelCountInput: container.querySelector('.parallel-count-input'), currentValueLabel: container.querySelector('.current-value-label'), currentValue: container.querySelector('.current-value'),
+            currentActivity: container.querySelector('.current-activity'), averageActivity: container.querySelector('.average-activity'), progressFill: container.querySelector('.progress-fill'),
+            reactionChamber: container.querySelector('.reaction-chamber'), groupsGrid: container.querySelector('.groups-grid'),
+            startButton: container.querySelector('.btn-start'), resetButton: container.querySelector('.btn-reset'), addButton: container.querySelector('.btn-add'), customButton: container.querySelector('.btn-custom'), addStandardButton: container.querySelector('.btn-add-standard'),
+            reactionTime: container.querySelector('.reaction-time'), groupCount: container.querySelector('.group-count'), tubeCount: container.querySelector('.tube-count'),
+            chartTitle: container.querySelector('.chart-title'), chartLine: container.querySelector('.chart-line'), chartPoints: container.querySelector('.chart-points'),
+            // New Model Control Elements
+            modelControls: container.querySelector('.model-controls'),
+            modelPhControls: container.querySelector('.model-ph-controls'),
+            modelTempControls: container.querySelector('.model-temp-controls'),
+            modelSubstrateControls: container.querySelector('.model-substrate-controls'),
+            modelSliderPhMu: container.querySelector('.model-slider-ph-mu'),
+            modelSliderPhSigma: container.querySelector('.model-slider-ph-sigma'),
+            modelSliderTempOpt: container.querySelector('.model-slider-temp-opt'),
+            modelSliderTempSigma: container.querySelector('.model-slider-temp-sigma'),
+            modelSliderSubstrateKm: container.querySelector('.model-slider-substrate-km'),
+            phMuVal: container.querySelector('.ph-mu-val'),
+            phSigmaVal: container.querySelector('.ph-sigma-val'),
+            tempOptVal: container.querySelector('.temp-opt-val'),
+            tempSigmaVal: container.querySelector('.temp-sigma-val'),
+            substrateKmVal: container.querySelector('.substrate-km-val'),
+            modelResetButton: container.querySelector('.btn-model-reset'),
+        };
+    }
+    
+    function getDialogElements(type) {
+        const dialog = document.getElementById(`custom-dialog-${type}`);
+        return {
+            dialog,
+            title: dialog.querySelector('.dialog-title'),
+            description: dialog.querySelector('.dialog-description'),
+            input: dialog.querySelector('.dialog-input'),
+            addButton: dialog.querySelector('.dialog-add-btn'),
+            previewArea: dialog.querySelector('.pending-groups-preview'),
+            confirmButton: dialog.querySelector('.dialog-btn-confirm'),
+            cancelButton: dialog.querySelector('.dialog-btn-cancel'),
+        }
+    }
+    </script>
+</body>
+</html>
